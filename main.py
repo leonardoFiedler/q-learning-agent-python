@@ -68,7 +68,7 @@ rewards[0, 4, 1] = 100
 def visualize_environment(
     current_row_position, current_col_position,
     current_row_object_position, current_col_object_position,
-    clear_screen=False
+    clear_screen=False, delay=False
 ):
     if clear_screen:
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -87,7 +87,8 @@ def visualize_environment(
         print(txt)
         print('-'*40)
     
-    # time.sleep(0.3)
+    if delay:
+        time.sleep(0.5)
 
 def is_terminal_state(object_row_index, object_column_index):
     if object_row_index in TERMINAL_STATE_INDEX.keys():
@@ -136,6 +137,48 @@ def get_next_location(current_row_index, current_column_index, action_index):
 
     return new_row_index, new_column_index
 
+def plot_min_path():
+    row_index, column_index = INITIAL_AGENT_POS
+    object_row_index, object_column_index = INITIAL_OBJECT_POS
+    
+    object_attached = 0
+    txt_agent_path = '({0}, {1})'.format(row_index, column_index)
+
+    visualize_environment(
+        row_index, column_index,
+        object_row_index, object_column_index,
+        delay=True, clear_screen=True
+    )
+
+    while not is_terminal_state(object_row_index, object_column_index):
+        action_index = np.argmax(q_values[row_index, column_index])
+        row_index, column_index = get_next_location(row_index, column_index, action_index)
+
+        if object_attached > 0:
+            object_row_index, object_column_index = get_next_location(object_row_index, object_column_index, action_index)
+            txt_agent_path += ' -> a:({0}, {1}), o: ({2}, {3})'.format(row_index, column_index, object_row_index, object_column_index)
+        else:
+            if row_index == INITIAL_OBJECT_POS[0]:
+                if (column_index + 1) == INITIAL_OBJECT_POS[1]:
+                    object_attached = 1
+                elif (column_index - 1) == INITIAL_OBJECT_POS[1]:
+                    object_attached = 1
+            
+            if object_attached > 0:
+                txt_agent_path += ' -> a:({0}, {1}), o: ({2}, {3})'.format(row_index, column_index, object_row_index, object_column_index)
+            else:
+                txt_agent_path += ' -> ({0}, {1})'.format(row_index, column_index)
+
+        visualize_environment(
+            row_index, column_index,
+            object_row_index, object_column_index,
+            delay=True, clear_screen=True
+        )
+
+    print('Caminho realizado pelo agente')
+    print(txt_agent_path)
+
+
 def plot_convergence_curve(convergence_data):
     x = convergence_data.keys()
     y = convergence_data.values()
@@ -145,15 +188,24 @@ def plot_convergence_curve(convergence_data):
     plt.title('Curva de Convergência - Número total de timesteps por episódio')
     plt.xlabel('Episódios')
     plt.ylabel('Timesteps')
-    plt.savefig('Curva de Convergência.png')
+    plt.savefig('curva-convergência.png')
 
 def main():
     epsilon = 0.9 # e
     discount_factor = 0.9 # γ - gamma
     learning_rate = 0.9 # a
+
+    # Quantidade maxima de tentativas por episodio
     max_timesteps_per_episode = 200
+    
+    # Visualiza graficamente o passo a passo
     visualize = False
+
+    # Exibe o caminho minimo final
+    plot_final_path = True
+
     start_time = time.time()
+    
 
     convergence_curve = {}
 
@@ -233,6 +285,10 @@ def main():
     
     end_time = time.time()
     plot_convergence_curve(convergence_curve)
+
+    if plot_final_path:
+        plot_min_path()
+    
     print('Treinamento completo em {0}'.format(end_time - start_time))
 
 if __name__ == "__main__":
