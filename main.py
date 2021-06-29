@@ -24,7 +24,7 @@ INITIAL_OBJECT_POS = (2,3)
 ACTIONS = ['up', 'right', 'down', 'left', 'stay']
 TERMINAL_STATE_INDEX = {0: [2, 3, 4]}
 
-q_values = np.zeros((ENVIRONMENT_ROWS, ENVIRONMENT_COLUMNS, 5))
+q_values = np.zeros((ENVIRONMENT_ROWS, ENVIRONMENT_COLUMNS, 4))
 
 # Define todos os lugares em que o agente nao pode se mover
 walls = {}
@@ -40,31 +40,30 @@ walls[5] = [6]
 # 0 - objeto nao esta anexado / 1 - objeto esta anexado
 rewards = np.full((ENVIRONMENT_ROWS, ENVIRONMENT_COLUMNS, 2), -100.)
 
-# Quando o objeto nao esta selecionado
-# Adiciona nas duas laterais o valor de recompensa de 50
-rewards[2, 2, 0] = 50
-rewards[2, 4, 0] = 50
-
-# Quando o objeto esta selecionado, adiciona 100 nos campos da base
-rewards[0, 2, 1] = 100
-rewards[0, 3, 1] = 100
-rewards[0, 4, 1] = 100
-
 # Define os espacos possiveis de caminhar com uma recompensa de -1
 aisles = {}
-aisles[0] = [i for i in range(0, 2)]
-aisles[0].extend([i for i in range(5, 7)])
+aisles[0] = [i for i in range(0, 7)]
 aisles[1] = [i for i in range(0, 3)]
 aisles[1].extend([i for i in range(4, 7)])
-aisles[2] = [i for i in range(0, 3)]
-aisles[2].extend([i for i in range(4, 7)])
+aisles[2] = [i for i in range(0, 7)]
 aisles[3] = [i for i in range(0, 7)]
 aisles[4] = [2]
 aisles[5] = [i for i in range(0, 6)]
 
 for row_index in range(0, 6):
     for col_index in aisles[row_index]:
-        rewards[row_index, col_index] = -1
+        for i in range(2):
+            rewards[row_index, col_index, i] = -1
+
+# Quando o objeto nao esta selecionado
+# Adiciona nas duas laterais o valor de recompensa de 50
+rewards[2, 2, 0] = 40
+rewards[2, 4, 0] = 40
+
+# Quando o objeto esta selecionado, adiciona 100 nos campos da base
+rewards[0, 2, 1] = 100
+rewards[0, 3, 1] = 100
+rewards[0, 4, 1] = 100
 
 def visualize_environment(
     current_row_position, current_col_position,
@@ -124,7 +123,9 @@ def get_next_location(current_row_index, current_column_index, action_index):
     new_row_index = current_row_index
     new_column_index = current_column_index
 
-    if ACTIONS[action_index] == 'up' and current_row_index > 0:
+    if ACTIONS[action_index] == 'stay':
+        return new_row_index, new_column_index
+    elif ACTIONS[action_index] == 'up' and current_row_index > 0:
         new_row_index -= 1
     elif ACTIONS[action_index] == 'right' and current_column_index < ENVIRONMENT_COLUMNS - 1:
         new_column_index += 1
@@ -147,7 +148,7 @@ def plot_convergence_curve(convergence_data):
     plt.savefig('Curva de Convergência.png')
 
 def main():
-    epsilon = 0.3 # e
+    epsilon = 0.9 # e
     discount_factor = 0.9 # γ - gamma
     learning_rate = 0.9 # a
     max_timesteps_per_episode = 200
@@ -156,7 +157,7 @@ def main():
 
     convergence_curve = {}
 
-    for episode in range(10):
+    for episode in range(2000):
         row_index, column_index = INITIAL_AGENT_POS
         object_row_index, object_column_index = INITIAL_OBJECT_POS
 
@@ -181,16 +182,25 @@ def main():
 
             row_index, column_index = get_next_location(row_index, column_index, action_index)
 
+            # Adiciona uma recompensa de -10 para casos invalidos
+            reward = -100
+
+            # Caso o objeto esteja anexado, o objeto passa a ser o ponto de referencia
+            # Para obter os valores
             if object_attached > 0:
                 object_row_index, object_column_index = get_next_location(object_row_index, object_column_index, action_index)
-            
-            reward = rewards[row_index, column_index, object_attached]
+                if old_obj_row_index != object_row_index or old_obj_col_index != object_column_index:
+                    reward = rewards[object_row_index, object_column_index, object_attached]
+            else:
+                # Caso a posicao de destino nao seja a mesma de origem
+                if old_row_index != row_index or old_column_index != column_index:
+                    reward = rewards[row_index, column_index, object_attached]
             
             old_q_value = q_values[old_row_index, old_column_index, action_index]
+            max_next_state = np.max(q_values[row_index, column_index])
 
             # Calculo do Epsilon greedy strategy
-            temporal_difference = reward + ((discount_factor * np.max(q_values[row_index, column_index])) - old_q_value)
-            new_q_value = old_q_value + (learning_rate * temporal_difference)
+            new_q_value = old_q_value + learning_rate * (reward + discount_factor * max_next_state - old_q_value)
 
             q_values[old_row_index, old_column_index, action_index] = new_q_value
 
@@ -222,8 +232,8 @@ def main():
         convergence_curve[episode] = timesteps
     
     end_time = time.time()
-    print('Treinamento completo em {0}'.format(end_time - start_time))
     plot_convergence_curve(convergence_curve)
+    print('Treinamento completo em {0}'.format(end_time - start_time))
 
 if __name__ == "__main__":
     main()
