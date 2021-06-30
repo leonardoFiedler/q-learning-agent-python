@@ -3,11 +3,13 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 
+np.random.seed(42)
+
 # 6x7 grid
-# 0 - Current agent position
-# 1 - Free places
-# 2 - Wall's
-# 3 - Object
+# X - Posicao atual do agente
+# 1 - Espacos livres
+# 2 - Paredes
+# 3 - Objeto
 # 4 - Base
 environment = [
     [1, 1, 4, 4, 4, 1, 1],
@@ -24,7 +26,7 @@ INITIAL_OBJECT_POS = (2,3)
 ACTIONS = ['up', 'right', 'down', 'left', 'stay']
 TERMINAL_STATE_INDEX = {0: [2, 3, 4]}
 
-q_values = np.zeros((ENVIRONMENT_ROWS, ENVIRONMENT_COLUMNS, 4))
+q_values = np.zeros((ENVIRONMENT_ROWS, ENVIRONMENT_COLUMNS, 5))
 
 # Define todos os lugares em que o agente nao pode se mover
 walls = {}
@@ -175,9 +177,8 @@ def plot_min_path():
             delay=True, clear_screen=True
         )
 
-    print('Caminho realizado pelo agente')
+    print('Menor caminho realizado pelo agente')
     print(txt_agent_path)
-
 
 def plot_convergence_curve(convergence_data):
     x = convergence_data.keys()
@@ -188,15 +189,15 @@ def plot_convergence_curve(convergence_data):
     plt.title('Curva de Convergência - Número total de timesteps por episódio')
     plt.xlabel('Episódios')
     plt.ylabel('Timesteps')
-    plt.savefig('curva-convergência.png')
+    plt.savefig('curva-convergencia.png')
 
 def main():
-    epsilon = 0.9 # e
+    epsilon = 0.3 # e
     discount_factor = 0.9 # γ - gamma
     learning_rate = 0.9 # a
 
     # Quantidade maxima de tentativas por episodio
-    max_timesteps_per_episode = 200
+    max_timesteps_per_episode = 300
     
     # Visualiza graficamente o passo a passo
     visualize = False
@@ -206,10 +207,9 @@ def main():
 
     start_time = time.time()
     
-
     convergence_curve = {}
 
-    for episode in range(2000):
+    for episode in range(1000):
         row_index, column_index = INITIAL_AGENT_POS
         object_row_index, object_column_index = INITIAL_OBJECT_POS
 
